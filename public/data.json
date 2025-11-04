@@ -1,0 +1,48 @@
+{
+  "users": [
+    {
+      "id": 1,
+      "name": "Budi",
+      "email": "budi@example.com"
+    }
+  ],
+  "services": [
+    {
+      "id": 1,
+      "title": "Jasa Pindahan (Small)",
+      "price": 250000,
+      "duration": "3 jam",
+      "description": "Pindahan apartemen kecil, 1-2 kamar"
+    },
+    {
+      "id": 2,
+      "title": "Jasa Pindahan (Medium)",
+      "price": 450000,
+      "duration": "6 jam",
+      "description": "Pindahan rumah kecil"
+    },
+    {
+      "id": 3,
+      "title": "Jasa Cleaning (Deep Clean)",
+      "price": 200000,
+      "duration": "2 jam",
+      "description": "Pembersihan menyeluruh sebelum pindahan"
+    }
+  ],
+  "orders": [
+    {
+      "id": 101,
+      "userId": 1,
+      "serviceId": 3,
+      "status": "selesai",
+      "date": "2025-10-20"
+    },
+    {
+      "id": 102,
+      "userId": 1,
+      "serviceId": 1,
+      "status": "berlangsung",
+      "date": "2025-11-02"
+    }
+  ]
+}
