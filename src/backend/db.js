@@ -1,6 +1,15 @@
 import Database from "better-sqlite3";
+import path from "path";
+import { fileURLToPath } from "url";
 
-const db = new Database("moveandclean.db");
+// Pastikan path absolut ke folder backend
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const dbPath = path.join(__dirname, "moveandclean.db");
+
+console.log("🗂️  Database path:", dbPath); // debug info
+
+const db = new Database(dbPath);
 
 // Buat tabel kalau belum ada
 db.exec(`
