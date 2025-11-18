@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { fetchData } from '../utils/api'
+import { getOrdersByUser, getServices } from '../utils/api'
 
 export default function History() {
   const user = JSON.parse(sessionStorage.getItem('mc_user') || 'null') || { id: 1 }
@@ -7,12 +7,36 @@ export default function History() {
   const [servicesMap, setServicesMap] = useState({})
 
   useEffect(() => {
-    fetchData().then(data => {
-      const map = {}
-      data.services.forEach(s => (map[s.id] = s))
-      setServicesMap(map)
-      setOrders(data.orders.filter(o => o.userId === user.id))
-    })
+    let mounted = true
+
+    async function load() {
+      try {
+        const [ordersRes, services] = await Promise.all([
+          getOrdersByUser(user.id),
+          getServices(),
+        ])
+
+        if (!mounted) return
+
+        const map = {}
+        services.forEach((s) => (map[s.id] = s))
+        setServicesMap(map)
+
+        // backend returns orders array; if static fallback, it may be filtered already
+        const userOrders = Array.isArray(ordersRes)
+          ? ordersRes
+          : []
+        setOrders(userOrders)
+      } catch (err) {
+        console.error('Failed loading history', err)
+      }
+    }
+
+    load()
+
+    return () => {
+      mounted = false
+    }
   }, [user.id])
 
   return (
@@ -22,10 +46,10 @@ export default function History() {
         {orders.length === 0 && (
           <div className="text-slate-600">Belum ada riwayat pesanan.</div>
         )}
-        {orders.map(o => (
+        {orders.map((o) => (
           <div key={o.id} className="border rounded-lg p-4 flex justify-between items-center bg-white shadow-sm">
             <div>
-              <div className="font-medium text-slate-800">{servicesMap[o.serviceId]?.title || 'Layanan'}</div>
+              <div className="font-medium text-slate-800">{servicesMap[o.service_id || o.serviceId]?.title || servicesMap[o.service_id || o.serviceId]?.title || 'Layanan'}</div>
               <div className="text-sm text-slate-600">{o.date} — {o.status}</div>
             </div>
             <div className="text-sm text-slate-700">#{o.id}</div>

@@ -4,3 +4,9 @@
 
 html, body, #root { height: 100%; }
 body { @apply bg-white text-slate-800; }
+
+/* Smooth scrolling for internal navigation */
+html { scroll-behavior: smooth; }
+
+/* Slight section spacing helpers */
+.section { padding-top: 4rem; padding-bottom: 4rem; }

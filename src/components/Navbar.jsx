@@ -1,13 +1,14 @@
-import React, { useEffect, useState, useRef } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { Menu, UserCircle } from "lucide-react";
+import React, { useEffect, useState } from "react";
+import { Link, useNavigate, useLocation } from "react-router-dom";
+import { Menu, UserCircle, X } from "lucide-react";
+import SearchBar from './SearchBar'
+import DashboardSidebar from './DashboardSidebar'
 
 export default function Navbar() {
   const [user, setUser] = useState(null);
-  const [open, setOpen] = useState(false);
-  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const nav = useNavigate();
-  const dropdownRef = useRef();
+  const location = useLocation();
 
   // ✅ Ambil data user & sinkronisasi login/logout otomatis
   useEffect(() => {
@@ -35,116 +36,94 @@ export default function Navbar() {
     nav("/"); // arahkan ke beranda
   };
 
-  // Tutup dropdown kalau klik di luar area
-  useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
-        setDropdownOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+  // dropdown removed: clicking profile now navigates to profile page directly
+
+  // Scroll helper: navigate to the proper landing (home or dashboard) then scroll to section id
+  function goToSection(id) {
+    const isAuth = !!sessionStorage.getItem("mc_user");
+    const current = window.location.pathname;
+
+    // If user is authenticated, target dashboard, otherwise target root
+    const targetPath = isAuth ? "/dashboard" : "/";
+
+    // If already on the target path, scroll directly
+    if (current === targetPath || current.startsWith(targetPath + "/")) {
+      const el = document.getElementById(id);
+      if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
+
+    // Not on target: navigate there then scroll after a short delay
+    nav(targetPath);
+    setTimeout(() => {
+      const el = document.getElementById(id);
+      if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 140);
+  }
 
   return (
     <nav className="bg-white border-b shadow-sm sticky top-0 z-50">
-      <div className="container mx-auto px-6 py-3 flex items-center justify-between">
-        {/* Logo */}
-        <Link to="/" className="font-bold text-xl text-sky-600 tracking-tight">
-          MoveandClean
-        </Link>
-
-        {/* Menu Desktop */}
-        <div className="hidden md:flex items-center space-x-6 text-slate-700">
-          <Link to="/services" className="hover:text-sky-600 transition">
-            Layanan
+      <div className="container mx-auto px-6 py-3 flex items-center">
+        {/* Left: Logo */}
+        <div className="flex items-center mr-4">
+          <Link to={user ? "/dashboard" : "/"} className="font-bold text-xl text-sky-600 tracking-tight">
+            Move &amp; Clean
           </Link>
-          <Link to="/history" className="hover:text-sky-600 transition">
-            Riwayat
-          </Link>
-          <Link to="/dashboard" className="hover:text-sky-600 transition">
-            Dashboard
-          </Link>
-
-          {user ? (
-            // Jika user login
-            <div className="relative" ref={dropdownRef}>
-              <button
-                onClick={() => setDropdownOpen(!dropdownOpen)}
-                className="flex items-center gap-2 hover:text-sky-600"
-              >
-                <UserCircle className="w-7 h-7 text-sky-600" />
-                <span className="text-sm font-medium">{user.name}</span>
-              </button>
-
-              {dropdownOpen && (
-                <div className="absolute right-0 mt-2 bg-white border rounded-md shadow-md w-44 py-2 z-50 animate-fadeIn">
-                  <Link
-                    to="/profile"
-                    className="block px-4 py-2 hover:bg-sky-50 text-slate-700"
-                    onClick={() => setDropdownOpen(false)}
-                  >
-                    Profil
-                  </Link>
-                  <button
-                    onClick={handleLogout}
-                    className="block w-full text-left px-4 py-2 hover:bg-red-50 text-red-600"
-                  >
-                    Keluar
-                  </button>
-                </div>
-              )}
-            </div>
-          ) : (
-            // Jika belum login
-            <Link
-              to="/auth"
-              className="px-3 py-1 border rounded-md hover:bg-sky-50"
-            >
-              Masuk
-            </Link>
-          )}
         </div>
 
-        {/* Tombol Menu Mobile */}
-        <button
-          className="md:hidden p-2 text-slate-600 hover:text-sky-600"
-          onClick={() => setOpen(!open)}
-        >
-          <Menu size={22} />
-        </button>
-      </div>
+        {/* Center: Navigation */}
+        <div className="flex-1 hidden md:flex justify-center">
+          <nav className="space-x-8 text-slate-700">
+            <button onClick={() => goToSection('services')} className="hover:text-sky-600 transition text-sm">Home</button>
+            <button onClick={() => goToSection('about')} className="hover:text-sky-600 transition text-sm">About</button>
+            <button onClick={() => goToSection('contact')} className="hover:text-sky-600 transition text-sm">Contact</button>
+          </nav>
+        </div>
 
-      {/* Menu Mobile */}
-      {open && (
-        <div className="md:hidden border-t bg-white px-6 py-3 space-y-3 text-slate-700">
-          <Link to="/services" className="block hover:text-sky-600">
-            Layanan
-          </Link>
-          <Link to="/history" className="block hover:text-sky-600">
-            Riwayat
-          </Link>
-          <Link to="/dashboard" className="block hover:text-sky-600">
-            Dashboard
-          </Link>
+        {/* Right: search, user/menu, sidebar toggle */}
+          <div className="flex items-center gap-3">
+          {(!location.pathname || (!location.pathname.startsWith('/profile') && !location.pathname.startsWith('/dashboard/profile'))) && <SearchBar />}
 
-          {user ? (
-            <>
-              <Link to="/profile" className="block hover:text-sky-600">
-                Profil
+          {/* Desktop auth / profile area */}
+          <div className="hidden md:flex items-center">
+            {user ? (
+              <Link to="/dashboard/profile" className="flex items-center gap-2 hover:text-sky-600">
+                <UserCircle className="w-7 h-7 text-sky-600" />
+                <span className="text-sm font-medium">{user.name}</span>
               </Link>
-              <button
-                onClick={handleLogout}
-                className="block text-left text-red-600 hover:text-red-700"
+            ) : (
+              <Link
+                to="/auth"
+                className="px-3 py-1 border rounded-md hover:bg-sky-50 text-sm"
               >
-                Keluar
+                Masuk
+              </Link>
+            )}
+          </div>
+
+          {/* Sidebar toggle (mobile + desktop) */}
+          <button
+            className="p-2 text-slate-600 hover:text-sky-600"
+            onClick={() => setSidebarOpen((s) => !s)}
+            aria-label="Toggle navigation sidebar"
+          >
+            <Menu size={22} />
+          </button>
+        </div>
+      </div>
+      {/* Global sidebar panel (anchored below navbar) */}
+      {sidebarOpen && (
+        <div className="fixed inset-0 z-40">
+          <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={() => setSidebarOpen(false)} />
+          <div className="absolute top-16 right-0 h-[calc(100vh-4rem)] w-72 sm:w-80 bg-gradient-to-b from-white via-slate-50 to-white border-l p-4 shadow-2xl overflow-auto transform transition-transform duration-300 ease-out rounded-l-2xl">
+            <div className="flex items-center justify-between mb-4">
+              <div className="text-sm font-semibold">Menu</div>
+              <button onClick={() => setSidebarOpen(false)} className="p-1 rounded-md hover:bg-slate-100">
+                <X className="w-4 h-4 text-slate-600" />
               </button>
-            </>
-          ) : (
-            <Link to="/auth" className="block hover:text-sky-600">
-              Masuk
-            </Link>
-          )}
+            </div>
+            <DashboardSidebar isVendor={user?.role === 'vendor'} />
+          </div>
         </div>
       )}
     </nav>

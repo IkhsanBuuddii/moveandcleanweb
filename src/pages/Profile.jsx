@@ -45,7 +45,7 @@ export default function Profile() {
           className="w-full text-left py-3 hover:bg-slate-50"
           onClick={() => alert("Fitur Edit Profile coming soon")}
         >
-          ✏️ Edit Profil
+          Edit Profil
         </button>
         {!isVendor && (
           <>
@@ -53,13 +53,13 @@ export default function Profile() {
               className="w-full text-left py-3 hover:bg-slate-50"
               onClick={() => alert("Notifikasi coming soon")}
             >
-              🔔 Notifikasi
+              Notifikasi
             </button>
             <button
               className="w-full text-left py-3 hover:bg-slate-50"
               onClick={() => alert("Metode Pembayaran coming soon")}
             >
-              💳 Metode Pembayaran
+              Metode Pembayaran
             </button>
           </>
         )}
@@ -67,7 +67,7 @@ export default function Profile() {
           className="w-full text-left py-3 hover:bg-slate-50"
           onClick={() => alert("Bantuan dan Dukungan coming soon")}
         >
-          🆘 Bantuan & Dukungan
+          Bantuan & Dukungan
         </button>
         <button
           onClick={toggleVendorMode}
@@ -79,7 +79,7 @@ export default function Profile() {
           onClick={handleLogout}
           className="w-full text-left py-3 hover:bg-red-50 text-red-600"
         >
-          🚪 Keluar
+          Keluar
         </button>
       </div>
     </div>
