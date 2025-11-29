@@ -5,15 +5,18 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "start:api": "node src/backend/server.js"
   },
   "dependencies": {
+    "socket.io": "^4.8.0",
     "better-sqlite3": "^12.4.1",
     "cors": "^2.8.5",
     "express": "^5.1.0",
     "lucide-react": "^0.552.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
+    "socket.io-client": "^4.8.0",
     "react-router-dom": "^6.14.1",
     "sqlite3": "^5.1.7"
   },

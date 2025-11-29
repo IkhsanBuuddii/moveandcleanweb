@@ -1,11 +1,14 @@
 import React, { useState } from 'react'
 import { createOrder } from '../utils/api'
+import { useNavigate } from 'react-router-dom'
 
 export default function BookingModal({ service, onClose, onSuccess }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [date, setDate] = useState('')
   const [notes, setNotes] = useState('')
+
+  const nav = useNavigate()
 
   const user = JSON.parse(sessionStorage.getItem('mc_user') || 'null')
 
@@ -20,13 +23,20 @@ export default function BookingModal({ service, onClose, onSuccess }) {
         vendor_id: service.vendor_id || service.vendorId || service.vendorId || 1,
         service_id: service.id,
         total: service.price || 0,
+        scheduled_at: date || null,
+        notes: notes || null,
       }
 
-      await createOrder(payload)
+      const res = await createOrder(payload)
       setLoading(false)
       if (onSuccess) onSuccess()
       onClose()
-      alert('Pesanan berhasil dibuat')
+      // navigate to order details
+      if (res && res.order && res.order.id) {
+        nav(`/dashboard/order/${res.order.id}`)
+      } else {
+        alert('Pesanan berhasil dibuat')
+      }
     } catch (err) {
       setLoading(false)
       setError(err?.message || 'Gagal membuat pesanan')

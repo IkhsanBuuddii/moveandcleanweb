@@ -16,7 +16,8 @@ export default function Profile() {
 
   function handleLogout() {
     sessionStorage.removeItem("mc_user");
-    navigate("/auth");
+    window.dispatchEvent(new Event("mc_auth_change"));
+    navigate("/");
   }
 
   function toggleVendorMode() {

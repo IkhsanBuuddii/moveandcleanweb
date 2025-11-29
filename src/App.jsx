@@ -8,7 +8,10 @@ import Dashboard from './pages/Dashboard';
 import Services from './pages/Services';
 import History from './pages/History';
 import Profile from './pages/Profile';
+import OrderDetails from './pages/OrderDetails';
 import ProtectedRoute from './components/ProtectedRoute'; 
+import VendorServices from './pages/VendorServices';
+import VendorOnboard from './pages/VendorOnboard';
 
 export default function App() {
   const location = useLocation()
@@ -19,16 +22,7 @@ export default function App() {
       {!isAuthRoute && <Navbar />}
       <main className="flex-1 container mx-auto px-4 py-8">
         <Routes>
-          <Route
-            path="/"
-            element={
-              JSON.parse(sessionStorage.getItem('mc_user') || 'null') ? (
-                <Navigate to="/dashboard" replace />
-              ) : (
-                <Home />
-              )
-            }
-          />
+          <Route path="/" element={<Home />} />
           <Route path="/auth" element={<Auth />} />
 
           {/* 🔒 Hanya bisa diakses kalau sudah login */}
@@ -89,6 +83,15 @@ export default function App() {
             }
           />
 
+          <Route
+            path="/dashboard/order/:id"
+            element={
+              <ProtectedRoute>
+                <OrderDetails />
+              </ProtectedRoute>
+            }
+          />
+
           {/* Vendor pages (placeholders until real pages exist) */}
           <Route
             path="/dashboard/vendor/orders"
@@ -99,10 +102,18 @@ export default function App() {
             }
           />
           <Route
+            path="/dashboard/vendor/onboard"
+            element={
+              <ProtectedRoute>
+                <VendorOnboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/dashboard/vendor/services"
             element={
               <ProtectedRoute>
-                <div>Vendor Services - Coming soon</div>
+                <VendorServices />
               </ProtectedRoute>
             }
           />

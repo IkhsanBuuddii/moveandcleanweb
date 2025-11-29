@@ -40,11 +40,11 @@ export default function Navbar() {
 
   // Scroll helper: navigate to the proper landing (home or dashboard) then scroll to section id
   function goToSection(id) {
-    const isAuth = !!sessionStorage.getItem("mc_user");
     const current = window.location.pathname;
 
-    // If user is authenticated, target dashboard, otherwise target root
-    const targetPath = isAuth ? "/dashboard" : "/";
+    // Always target the public landing for anchors (home sections live there)
+    // This makes Home/About/Contact work even for logged-in users.
+    const targetPath = "/";
 
     // If already on the target path, scroll directly
     if (current === targetPath || current.startsWith(targetPath + "/")) {
@@ -101,14 +101,16 @@ export default function Navbar() {
             )}
           </div>
 
-          {/* Sidebar toggle (mobile + desktop) */}
-          <button
-            className="p-2 text-slate-600 hover:text-sky-600"
-            onClick={() => setSidebarOpen((s) => !s)}
-            aria-label="Toggle navigation sidebar"
-          >
-            <Menu size={22} />
-          </button>
+            {/* Sidebar toggle (mobile + desktop) - only for authenticated users */}
+            {user && (
+              <button
+                className="p-2 text-slate-600 hover:text-sky-600"
+                onClick={() => setSidebarOpen((s) => !s)}
+                aria-label="Toggle navigation sidebar"
+              >
+                <Menu size={22} />
+              </button>
+            )}
         </div>
       </div>
       {/* Global sidebar panel (anchored below navbar) */}

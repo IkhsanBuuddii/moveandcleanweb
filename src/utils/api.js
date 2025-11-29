@@ -1,42 +1,96 @@
-// API helpers — prefer backend endpoints, fall back to public/data.json in dev
-export async function fetchData() {
-  // keep existing fallback for static dev data
-  const res = await fetch('/data.json')
-  if (!res.ok) throw new Error('Failed to fetch data.json')
-  return res.json()
+const API = import.meta.env.VITE_API_BASE || 'http://localhost:3001'
+
+async function fetchJson(url, opts) {
+  const res = await fetch(url, opts)
+  if (res.ok) return res.json()
+  const err = await res.json().catch(() => ({ message: res.statusText }))
+  throw new Error(err.message || 'Request failed')
 }
 
 export async function getServices() {
   try {
-    const res = await fetch('http://localhost:3000/api/services')
-    if (res.ok) return res.json()
-    // if backend returns error, fallback to static
-    console.warn('Backend /api/services returned non-ok, falling back to /data.json')
+    return await fetchJson(`${API}/api/services`)
   } catch (err) {
-    console.warn('Could not reach backend /api/services, falling back to /data.json', err)
+    console.warn('getServices failed, falling back to static', err)
+    const res = await fetch('/data.json')
+    if (!res.ok) throw new Error('Failed to fetch data.json')
+    const data = await res.json()
+    return data.services
   }
-  const data = await fetchData()
-  return data.services
+}
+
+export async function getVendors() {
+  return await fetchJson(`${API}/api/vendors`)
+}
+
+export async function getVendorById(id) {
+  return await fetchJson(`${API}/api/vendors/${id}`)
+}
+
+export async function createVendor({ user_id, vendor_name, description, location }) {
+  return await fetchJson(`${API}/api/vendors`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ user_id, vendor_name, description, location }),
+  })
+}
+
+export async function getServicesByVendor(vendorId) {
+  return await fetchJson(`${API}/api/vendors/${vendorId}/services`)
+}
+
+export async function createService({ vendor_id, title, price, duration, category }) {
+  return await fetchJson(`${API}/api/services`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ vendor_id, title, price, duration, category }),
+  })
+}
+
+export async function updateService(id, payload) {
+  return await fetchJson(`${API}/api/services/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function deleteService(id) {
+  return await fetchJson(`${API}/api/services/${id}`, { method: 'DELETE' })
 }
 
 export async function getOrdersByUser(userId) {
   try {
-    const res = await fetch(`http://localhost:3000/api/orders/${userId}`)
-    if (res.ok) return res.json()
-    console.warn('Backend /api/orders returned non-ok, falling back to /data.json')
+    return await fetchJson(`${API}/api/orders/${userId}`)
   } catch (err) {
-    console.warn('Could not reach backend /api/orders, falling back to /data.json', err)
+    console.warn('getOrdersByUser failed, falling back to static', err)
+    const res = await fetch('/data.json')
+    if (!res.ok) throw new Error('Failed to fetch data.json')
+    const data = await res.json()
+    return data.orders.filter((o) => o.userId === userId)
   }
-
-  const data = await fetchData()
-  return data.orders.filter((o) => o.userId === userId)
 }
 
-export async function createOrder({ user_id, vendor_id, service_id, total }) {
-  const res = await fetch('http://localhost:3000/api/orders', {
+export async function createOrder({ user_id, vendor_id, service_id, total, scheduled_at, notes }) {
+  return await fetchJson(`${API}/api/orders`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ user_id, vendor_id, service_id, total }),
+    body: JSON.stringify({ user_id, vendor_id, service_id, total, scheduled_at, notes }),
   })
-  return res.ok ? res.json() : Promise.reject(await res.json())
+}
+
+export async function getOrderById(orderId) {
+  return await fetchJson(`${API}/api/orders/order/${orderId}`)
+}
+
+export async function getMessages(orderId) {
+  return await fetchJson(`${API}/api/orders/${orderId}/messages`)
+}
+
+export async function postMessage(orderId, { sender_id, text }) {
+  return await fetchJson(`${API}/api/orders/${orderId}/messages`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ sender_id, text }),
+  })
 }

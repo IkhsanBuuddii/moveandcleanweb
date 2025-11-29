@@ -38,6 +38,11 @@ export default function Dashboard() {
                     <p className="text-sm text-slate-600 mt-2">Jelajahi layanan yang paling banyak dipesan pengguna lain.</p>
                     <Link to="/dashboard/service" className="text-sky-600 text-sm mt-3 inline-block hover:underline">Lihat Semua</Link>
                   </div>
+                  <div className="bg-white rounded-xl p-6 shadow-sm border">
+                    <h3 className="font-semibold text-slate-800 text-lg">Ingin Menjadi Vendor?</h3>
+                    <p className="text-sm text-slate-600 mt-2">Daftarkan akun Anda sebagai vendor untuk mulai menawarkan layanan.</p>
+                    <Link to="/dashboard/vendor/onboard" className="text-sky-600 text-sm mt-3 inline-block hover:underline">Daftar Sebagai Vendor</Link>
+                  </div>
                 </>
               ) : (
                 <>

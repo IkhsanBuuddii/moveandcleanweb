@@ -47,12 +47,36 @@ CREATE TABLE IF NOT EXISTS orders (
   vendor_id INTEGER,
   service_id INTEGER,
   date TEXT,
+  scheduled_at TEXT,
+  notes TEXT,
   status TEXT DEFAULT 'pending',
   total REAL,
   FOREIGN KEY(user_id) REFERENCES users(id),
   FOREIGN KEY(vendor_id) REFERENCES vendors(id),
   FOREIGN KEY(service_id) REFERENCES services(id)
 );
+
+CREATE TABLE IF NOT EXISTS order_messages (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  order_id INTEGER,
+  sender_id INTEGER,
+  text TEXT,
+  created_at TEXT DEFAULT (datetime('now')),
+  FOREIGN KEY(order_id) REFERENCES orders(id),
+  FOREIGN KEY(sender_id) REFERENCES users(id)
+);
 `);
 
 export default db;
+// Ensure older DBs get new columns if missing
+try {
+  const cols = db.prepare("PRAGMA table_info('orders')").all().map((c) => c.name)
+  if (!cols.includes('scheduled_at')) {
+    db.prepare("ALTER TABLE orders ADD COLUMN scheduled_at TEXT").run()
+  }
+  if (!cols.includes('notes')) {
+    db.prepare("ALTER TABLE orders ADD COLUMN notes TEXT").run()
+  }
+} catch (err) {
+  console.warn('Error ensuring orders columns:', err.message)
+}
