@@ -1,8 +1,15 @@
-const API = import.meta.env.VITE_API_BASE || 'http://localhost:3001'
+export const API = import.meta.env.VITE_API_BASE || ''
 
-async function fetchJson(url, opts) {
+export async function fetchJson(url, opts) {
   const res = await fetch(url, opts)
-  if (res.ok) return res.json()
+  if (res.ok) {
+    // try to parse JSON, but return null if body empty
+    try {
+      return await res.json()
+    } catch (e) {
+      return null
+    }
+  }
   const err = await res.json().catch(() => ({ message: res.statusText }))
   throw new Error(err.message || 'Request failed')
 }

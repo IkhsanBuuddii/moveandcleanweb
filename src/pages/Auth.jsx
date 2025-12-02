@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate, Navigate } from "react-router-dom";
+import { API, fetchJson } from '../utils/api';
 
 export default function Auth() {
   const existing = JSON.parse(sessionStorage.getItem("mc_user") || "null");
@@ -22,17 +23,17 @@ export default function Auth() {
     setLoading(true);
 
     try {
-      const API = import.meta.env.VITE_API_BASE || 'http://localhost:3000'
-      const url = mode === 'login' ? `${API}/api/login` : `${API}/api/register`
-
-      const res = await fetch(url, {
+      const url = mode === 'login' ? `${API}/api/login` : `${API}/api/register`;
+      const data = await fetchJson(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form),
       });
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "Gagal");
+      // fetchJson throws on non-ok; `data` may be null if response had no body
+      if (!data) {
+        // give a clear message including status and url would be better, but fetchJson already throws for non-ok
+        throw new Error('No response body from server')
+      }
 
       sessionStorage.setItem("mc_user", JSON.stringify(data.user));
       window.dispatchEvent(new Event("mc_auth_change"));
