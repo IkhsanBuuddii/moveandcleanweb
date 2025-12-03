@@ -169,6 +169,7 @@ app.post('/api/upload', upload.single('image'), async (req, res) => {
   // If no supabase or upload failed, return local uploads path (ensure Express static serves it)
   if (req.file) {
     const publicUrl = `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`
+    console.log('Upload saved locally:', { filename: req.file.filename, size: req.file.size, mime: req.file.mimetype, publicUrl })
     return res.json({ url: publicUrl })
   }
 

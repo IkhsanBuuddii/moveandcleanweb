@@ -31,11 +31,21 @@ export default function VendorOrders() {
           // initialize socket and join vendor room
           // use API base if configured, otherwise same origin
           const socketUrl = (API && API.length) ? API : window.location.origin
-          const socket = io(socketUrl, { transports: ['websocket', 'polling'] })
+          // Use polling-only to avoid WebSocket upgrade overhead and limit resource usage
+          const socket = io(socketUrl, {
+            path: '/socket.io',
+            transports: ['polling'],
+            reconnectionAttempts: 5,
+            reconnectionDelay: 1000,
+          })
           socketRef.current = socket
 
           socket.on('connect', () => {
             socket.emit('join_vendor', my.id)
+          })
+
+          socket.on('connect_error', (err) => {
+            console.warn('Socket connect_error', err)
           })
 
           socket.on('new_order', (newOrder) => {

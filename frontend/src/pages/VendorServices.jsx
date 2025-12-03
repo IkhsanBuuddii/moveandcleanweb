@@ -38,6 +38,7 @@ export default function VendorServices() {
       if (imageFile) {
         try {
           const r = await uploadImage(imageFile)
+          console.log('uploadImage response:', r)
           image_url = r.url
         } catch (err) {
           console.error('Image upload failed', err)
@@ -49,6 +50,7 @@ export default function VendorServices() {
       if (image_url) payload.image_url = image_url
 
       const s = await createService(payload)
+      console.log('createService response:', s)
       setServices((p) => [s, ...p])
       setTitle(''); setPrice(''); setDuration(''); setCategory(''); setImageFile(null)
     } catch (err) {
