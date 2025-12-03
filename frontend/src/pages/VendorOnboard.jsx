@@ -16,9 +16,9 @@ export default function VendorOnboard() {
     if (!user) return setError('Silakan login terlebih dahulu')
     setLoading(true)
     try {
-      const vendor = await createVendor({ user_id: user.id, vendor_name: name, description: desc, location: loc })
-      // update session role
-      const updatedUser = { ...user, role: 'vendor' }
+      const res = await createVendor({ user_id: user.id, vendor_name: name, description: desc, location: loc })
+      // server returns { vendor, user } on success (user contains updated role). Use it to update session.
+      const updatedUser = (res && res.user) ? res.user : { ...user, role: 'vendor' }
       sessionStorage.setItem('mc_user', JSON.stringify(updatedUser))
       window.dispatchEvent(new Event('mc_auth_change'))
       setLoading(false)

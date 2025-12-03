@@ -64,7 +64,7 @@ app.post("/api/register", async (req, res) => {
       const { data, error } = await supabase
         .from('users')
         .insert([{ name, email, password, role: 'user' }])
-        .select('id, name, email')
+        .select('id, name, email, role')
         .single();
       if (error) return res.status(500).json({ message: error.message });
       return res.json({ user: data });
@@ -95,7 +95,7 @@ app.post("/api/login", async (req, res) => {
     try {
       const { data, error } = await supabase
         .from('users')
-        .select('id, name, email')
+        .select('id, name, email, role')
         .eq('email', email)
         .eq('password', password)
         .limit(1)
@@ -108,7 +108,7 @@ app.post("/api/login", async (req, res) => {
   }
 
   const user = db
-    .prepare("SELECT id, name, email FROM users WHERE email = ? AND password = ?")
+    .prepare("SELECT id, name, email, role FROM users WHERE email = ? AND password = ?")
     .get(email, password);
 
   if (!user) return res.status(401).json({ message: "Email atau password salah" });
@@ -184,9 +184,14 @@ app.post('/api/vendors', async (req, res) => {
       if (error) return res.status(500).json({ message: error.message });
 
       // upgrade user role to vendor
-      await supabase.from('users').update({ role: 'vendor' }).eq('id', user_id);
+      const { error: updErr } = await supabase.from('users').update({ role: 'vendor' }).eq('id', user_id);
+      if (updErr) return res.status(500).json({ message: updErr.message });
 
-      return res.json(data);
+      // fetch updated user and return both vendor + user so client can update session
+      const { data: updatedUser, error: userErr } = await supabase.from('users').select('id, name, email, role').eq('id', user_id).limit(1).single();
+      if (userErr) return res.status(500).json({ message: userErr.message });
+
+      return res.json({ vendor: data, user: updatedUser });
     } catch (err) {
       return res.status(500).json({ message: err.message || err });
     }
@@ -202,7 +207,9 @@ app.post('/api/vendors', async (req, res) => {
   // upgrade user role to vendor
   db.prepare("UPDATE users SET role = 'vendor' WHERE id = ?").run(user_id);
 
-  res.json(vendor);
+  const updatedUser = db.prepare('SELECT id, name, email, role FROM users WHERE id = ?').get(user_id);
+
+  res.json({ vendor, user: updatedUser });
 });
 
 app.get('/api/vendors', async (req, res) => {
@@ -432,6 +439,67 @@ app.get("/api/orders/:userId", async (req, res) => {
     `)
     .all(userId);
   res.json(orders);
+});
+
+// GET orders for a vendor
+app.get('/api/vendors/:vendorId/orders', async (req, res) => {
+  const vendorId = req.params.vendorId;
+  if (supabase) {
+    try {
+      const { data, error } = await supabase.from('orders').select('*, services(title), users(name)').eq('vendor_id', vendorId);
+      if (error) return res.status(500).json({ message: error.message });
+      return res.json(data);
+    } catch (err) {
+      return res.status(500).json({ message: err.message || err });
+    }
+  }
+
+  const orders = db.prepare(`
+    SELECT o.*, s.title, u.name as user_name
+    FROM orders o
+    JOIN services s ON o.service_id = s.id
+    LEFT JOIN users u ON o.user_id = u.id
+    WHERE o.vendor_id = ?
+    ORDER BY o.date DESC
+  `).all(vendorId);
+
+  res.json(orders);
+});
+
+// Update an order (e.g., status changes)
+app.put('/api/orders/:id', async (req, res) => {
+  const id = req.params.id;
+  const { status } = req.body;
+
+  if (!status) return res.status(400).json({ message: 'status required' });
+
+  if (supabase) {
+    try {
+      const { data, error } = await supabase.from('orders').update({ status }).eq('id', id).select().single();
+      if (error) return res.status(404).json({ message: error.message });
+
+      // notify rooms
+      const vendorId = data.vendor_id;
+      io.to(`vendor:${vendorId}`).emit('order_updated', data);
+      io.to(`order:${id}`).emit('order_updated', data);
+
+      return res.json(data);
+    } catch (err) {
+      return res.status(500).json({ message: err.message || err });
+    }
+  }
+
+  const stmt = db.prepare('UPDATE orders SET status = ? WHERE id = ?');
+  const info = stmt.run(status, id);
+  if (info.changes === 0) return res.status(404).json({ message: 'Order not found' });
+
+  const order = db.prepare('SELECT o.*, s.title, v.vendor_name FROM orders o JOIN services s ON o.service_id = s.id JOIN vendors v ON o.vendor_id = v.id WHERE o.id = ?').get(id);
+
+  // emit updates
+  io.to(`vendor:${order.vendor_id}`).emit('order_updated', order);
+  io.to(`order:${id}`).emit('order_updated', order);
+
+  res.json(order);
 });
 
 // ✅ TEST ROUTE

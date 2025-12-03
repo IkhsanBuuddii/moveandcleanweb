@@ -12,6 +12,7 @@ import OrderDetails from './pages/OrderDetails';
 import ProtectedRoute from './components/ProtectedRoute'; 
 import VendorServices from './pages/VendorServices';
 import VendorOnboard from './pages/VendorOnboard';
+import VendorOrders from './pages/VendorOrders';
 
 export default function App() {
   const location = useLocation()
@@ -97,7 +98,7 @@ export default function App() {
             path="/dashboard/vendor/orders"
             element={
               <ProtectedRoute>
-                <div>Vendor Orders - Coming soon</div>
+                <VendorOrders />
               </ProtectedRoute>
             }
           />

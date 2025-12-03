@@ -78,6 +78,18 @@ export async function getOrdersByUser(userId) {
   }
 }
 
+export async function getOrdersByVendor(vendorId) {
+  return await fetchJson(`${API}/api/vendors/${vendorId}/orders`)
+}
+
+export async function updateOrderStatus(orderId, status) {
+  return await fetchJson(`${API}/api/orders/${orderId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ status }),
+  })
+}
+
 export async function createOrder({ user_id, vendor_id, service_id, total, scheduled_at, notes }) {
   return await fetchJson(`${API}/api/orders`, {
     method: 'POST',
