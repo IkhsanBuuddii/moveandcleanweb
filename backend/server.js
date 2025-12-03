@@ -3,6 +3,9 @@ import express from "express";
 import cors from "cors";
 import http from "http";
 import { Server as IOServer } from "socket.io";
+import path from 'path'
+import multer from 'multer'
+import fs from 'fs'
 import db from "./db.js";
 import dotenv from 'dotenv';
 import { createClient } from '@supabase/supabase-js';
@@ -22,6 +25,30 @@ if (SUPABASE_URL && SUPABASE_KEY) {
 const app = express();
 app.use(cors());
 app.use(express.json());
+
+// serve uploaded files
+const uploadsDir = path.join(process.cwd(), 'uploads')
+app.use('/uploads', express.static(uploadsDir))
+
+// ensure uploads dir exists
+try {
+  if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true })
+} catch (err) {
+  console.warn('Could not create uploads dir:', err.message)
+}
+
+// multer setup for local file uploads
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, uploadsDir)
+  },
+  filename: function (req, file, cb) {
+    const unique = Date.now() + '-' + Math.round(Math.random() * 1e9)
+    const ext = path.extname(file.originalname)
+    cb(null, `${unique}${ext}`)
+  }
+})
+const upload = multer({ storage })
 
 // Create HTTP + Socket.IO server
 const httpServer = http.createServer(app);
@@ -116,9 +143,41 @@ app.post("/api/login", async (req, res) => {
   res.json({ user });
 });
 
+// Image upload endpoint — supports Supabase storage when configured, otherwise stores locally under /uploads
+app.post('/api/upload', upload.single('image'), async (req, res) => {
+  // if supabase configured, upload to storage bucket 'service-images' (create and configure this bucket separately)
+  if (supabase && req.file) {
+    try {
+      const fileBuffer = fs.readFileSync(req.file.path)
+      const filename = `service-images/${req.file.filename}`
+
+      const { data, error: upErr } = await supabase.storage.from('service-images').upload(filename, fileBuffer, { contentType: req.file.mimetype, upsert: true })
+      if (upErr) {
+        console.error('Supabase upload error', upErr)
+        // fallback to local URL if supabase upload fails
+      } else {
+        // try to get public URL
+        const { data: urlData } = supabase.storage.from('service-images').getPublicUrl(filename)
+        return res.json({ url: urlData.publicUrl })
+      }
+    } catch (err) {
+      console.error('Error uploading to supabase', err)
+      // fallthrough to serve local file
+    }
+  }
+
+  // If no supabase or upload failed, return local uploads path (ensure Express static serves it)
+  if (req.file) {
+    const publicUrl = `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`
+    return res.json({ url: publicUrl })
+  }
+
+  return res.status(400).json({ message: 'No image uploaded' })
+})
+
 // ✅ TAMBAH SERVICE (vendor menambahkan layanan)
 app.post("/api/services", async (req, res) => {
-  const { vendor_id, title, price, duration, category } = req.body;
+  const { vendor_id, title, price, duration, category, image_url } = req.body;
   if (!vendor_id || !title) return res.status(400).json({ message: 'vendor_id and title required' });
 
   if (supabase) {
@@ -126,7 +185,9 @@ app.post("/api/services", async (req, res) => {
       const { data: vendor, error: vErr } = await supabase.from('vendors').select('*').eq('id', vendor_id).limit(1).single();
       if (vErr || !vendor) return res.status(404).json({ message: 'Vendor not found' });
 
-      const { data, error } = await supabase.from('services').insert([{ vendor_id, title, price, duration, category }]).select().single();
+      const insertObj = { vendor_id, title, price, duration, category };
+      if (image_url) insertObj.image_url = image_url;
+      const { data, error } = await supabase.from('services').insert([insertObj]).select().single();
       if (error) return res.status(500).json({ message: error.message });
       return res.json(data);
     } catch (err) {
@@ -137,9 +198,9 @@ app.post("/api/services", async (req, res) => {
   const vendor = db.prepare('SELECT * FROM vendors WHERE id = ?').get(vendor_id);
   if (!vendor) return res.status(404).json({ message: 'Vendor not found' });
   const stmt = db.prepare(
-    "INSERT INTO services (vendor_id, title, price, duration, category) VALUES (?, ?, ?, ?, ?)"
+    "INSERT INTO services (vendor_id, title, price, duration, category, image_url) VALUES (?, ?, ?, ?, ?, ?)"
   );
-  const info = stmt.run(vendor_id, title, price, duration, category);
+  const info = stmt.run(vendor_id, title, price, duration, category, image_url || null);
   const service = db.prepare('SELECT * FROM services WHERE id = ?').get(info.lastInsertRowid);
   res.json(service);
 });
@@ -202,6 +263,7 @@ app.post('/api/vendors', async (req, res) => {
 
   const stmt = db.prepare('INSERT INTO vendors (user_id, vendor_name, description, location) VALUES (?, ?, ?, ?)');
   const info = stmt.run(user_id, vendor_name, description || null, location || null);
+
   const vendor = db.prepare('SELECT * FROM vendors WHERE id = ?').get(info.lastInsertRowid);
 
   // upgrade user role to vendor
@@ -211,6 +273,7 @@ app.post('/api/vendors', async (req, res) => {
 
   res.json({ vendor, user: updatedUser });
 });
+
 
 app.get('/api/vendors', async (req, res) => {
   if (supabase) {
@@ -265,11 +328,13 @@ app.get('/api/vendors/:vendorId/services', async (req, res) => {
 
 // Update service
 app.put('/api/services/:id', async (req, res) => {
-  const { title, price, duration, category } = req.body;
+  const { title, price, duration, category, image_url } = req.body;
   const id = req.params.id;
   if (supabase) {
     try {
-      const { data, error } = await supabase.from('services').update({ title, price, duration, category }).eq('id', id).select().single();
+      const updateObj = { title, price, duration, category };
+      if (typeof image_url !== 'undefined') updateObj.image_url = image_url;
+      const { data, error } = await supabase.from('services').update(updateObj).eq('id', id).select().single();
       if (error) return res.status(404).json({ message: error.message });
       return res.json(data);
     } catch (err) {
@@ -277,8 +342,8 @@ app.put('/api/services/:id', async (req, res) => {
     }
   }
 
-  const stmt = db.prepare('UPDATE services SET title = ?, price = ?, duration = ?, category = ? WHERE id = ?');
-  const info = stmt.run(title, price, duration, category, id);
+  const stmt = db.prepare('UPDATE services SET title = ?, price = ?, duration = ?, category = ?, image_url = ? WHERE id = ?');
+  const info = stmt.run(title, price, duration, category, image_url || null, id);
   if (info.changes === 0) return res.status(404).json({ message: 'Service not found' });
   const service = db.prepare('SELECT * FROM services WHERE id = ?').get(id);
   res.json(service);

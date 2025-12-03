@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { getVendors, getServicesByVendor, createService, updateService, deleteService } from '../utils/api'
+import { getVendors, getServicesByVendor, createService, updateService, deleteService, uploadImage } from '../utils/api'
 
 export default function VendorServices() {
   const user = JSON.parse(sessionStorage.getItem('mc_user') || 'null')
@@ -9,6 +9,7 @@ export default function VendorServices() {
   const [price, setPrice] = useState('')
   const [duration, setDuration] = useState('')
   const [category, setCategory] = useState('')
+  const [imageFile, setImageFile] = useState(null)
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
@@ -33,9 +34,23 @@ export default function VendorServices() {
     if (!vendor) return alert('Anda belum terdaftar sebagai vendor')
     setLoading(true)
     try {
-      const s = await createService({ vendor_id: vendor.id, title, price: Number(price || 0), duration, category })
+      let image_url = undefined
+      if (imageFile) {
+        try {
+          const r = await uploadImage(imageFile)
+          image_url = r.url
+        } catch (err) {
+          console.error('Image upload failed', err)
+          alert('Gagal upload gambar — layanan tetap akan dibuat tanpa gambar')
+        }
+      }
+
+      const payload = { vendor_id: vendor.id, title, price: Number(price || 0), duration, category }
+      if (image_url) payload.image_url = image_url
+
+      const s = await createService(payload)
       setServices((p) => [s, ...p])
-      setTitle(''); setPrice(''); setDuration(''); setCategory('')
+      setTitle(''); setPrice(''); setDuration(''); setCategory(''); setImageFile(null)
     } catch (err) {
       alert(err?.message || 'Gagal menambah layanan')
     } finally { setLoading(false) }
@@ -61,6 +76,7 @@ export default function VendorServices() {
             <input value={price} onChange={(e) => setPrice(e.target.value)} placeholder="Harga" className="border px-3 py-2 rounded" />
             <input value={duration} onChange={(e) => setDuration(e.target.value)} placeholder="Durasi" className="border px-3 py-2 rounded" />
             <input value={category} onChange={(e) => setCategory(e.target.value)} placeholder="Kategori" className="border px-3 py-2 rounded md:col-span-4" />
+            <input type="file" accept="image/*" onChange={(e) => setImageFile(e.target.files?.[0] || null)} className="md:col-span-4" />
             <div className="md:col-span-4 flex justify-end">
               <button disabled={loading} className="px-4 py-2 bg-sky-600 text-white rounded">{loading ? 'Memproses...' : 'Tambah Layanan'}</button>
             </div>
@@ -69,9 +85,12 @@ export default function VendorServices() {
           <div className="mt-4 space-y-3">
             {services.map((s) => (
               <div key={s.id} className="p-3 border rounded flex items-center justify-between">
-                <div>
-                  <div className="font-medium">{s.title} — Rp{s.price?.toLocaleString()}</div>
-                  <div className="text-xs text-slate-500">{s.duration} • {s.category}</div>
+                <div className="flex items-center gap-3">
+                  {s.image_url ? <img src={s.image_url} alt={s.title} className="w-16 h-12 object-cover rounded" /> : (<div className="w-16 h-12 bg-slate-100 rounded flex items-center justify-center text-xs text-slate-400">No image</div>)}
+                  <div>
+                    <div className="font-medium">{s.title} — Rp{s.price?.toLocaleString()}</div>
+                    <div className="text-xs text-slate-500">{s.duration} • {s.category}</div>
+                  </div>
                 </div>
                 <div className="flex gap-2">
                   <button onClick={() => handleDelete(s.id)} className="px-3 py-1 rounded border text-red-600">Hapus</button>

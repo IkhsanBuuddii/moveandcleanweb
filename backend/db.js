@@ -80,3 +80,13 @@ try {
 } catch (err) {
   console.warn('Error ensuring orders columns:', err.message)
 }
+
+// ensure services table has image_url column for storing service images
+try {
+  const sCols = db.prepare("PRAGMA table_info('services')").all().map((c) => c.name)
+  if (!sCols.includes('image_url')) {
+    db.prepare("ALTER TABLE services ADD COLUMN image_url TEXT").run()
+  }
+} catch (err) {
+  console.warn('Error ensuring services columns:', err.message)
+}

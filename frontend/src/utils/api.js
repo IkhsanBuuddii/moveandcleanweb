@@ -54,6 +54,17 @@ export async function createService({ vendor_id, title, price, duration, categor
   })
 }
 
+export async function uploadImage(file) {
+  const form = new FormData()
+  form.append('image', file)
+  const res = await fetch(`${API}/api/upload`, { method: 'POST', body: form })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ message: res.statusText }))
+    throw new Error(err.message || 'Upload failed')
+  }
+  return await res.json()
+}
+
 export async function updateService(id, payload) {
   return await fetchJson(`${API}/api/services/${id}`, {
     method: 'PUT',
