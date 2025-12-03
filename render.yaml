@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: moveandclean-backend
+    env: node
+    region: oregon
+    branch: main
+    buildCommand: npm install
+    startCommand: npm run start:api
+    plan: starter
+    envVars:
+      - key: SUPABASE_URL
+        value: ""
+        fromService: null
+      - key: SUPABASE_KEY
+        value: ""
+        fromService: null
+    disk: 512
+
+# Notes:
+# - Fill `envVars[*].value` in Render UI or replace these values with your secrets.
+# - You can remove `envVars` from this file and configure secrets in the Render dashboard instead.

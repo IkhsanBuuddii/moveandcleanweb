@@ -439,6 +439,11 @@ app.get("/", (req, res) => {
   res.send("MoveandClean API aktif 🚀");
 });
 
+// Health check for uptime/monitoring
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok', time: new Date().toISOString() });
+});
+
 // ✅ START SERVER
 const PORT = process.env.PORT || 3000;
 httpServer.listen(PORT, () => console.log(`✅ API + Socket.IO server running at http://localhost:${PORT}`));
