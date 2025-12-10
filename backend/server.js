@@ -13,10 +13,11 @@ import { createClient } from '@supabase/supabase-js';
 dotenv.config();
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_KEY = process.env.SUPABASE_KEY;
+// Use service role key for server-side storage operations
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 let supabase = null;
-if (SUPABASE_URL && SUPABASE_KEY) {
-  supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+if (SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY) {
+  supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
   console.log('🔗 Supabase client initialized');
 } else {
   console.log('🔒 Supabase not configured — using local sqlite DB');
@@ -149,15 +150,21 @@ app.post('/api/upload', upload.single('image'), async (req, res) => {
   if (supabase && req.file) {
     try {
       const fileBuffer = fs.readFileSync(req.file.path)
-      const filename = `service-images/${req.file.filename}`
+      // upload object key: use the generated filename only (don't double-prefix with bucket name)
+      const filename = req.file.filename
 
-      const { data, error: upErr } = await supabase.storage.from('service-images').upload(filename, fileBuffer, { contentType: req.file.mimetype, upsert: true })
+      const { data: upData, error: upErr } = await supabase.storage.from('service-images').upload(filename, fileBuffer, { contentType: req.file.mimetype, upsert: true })
       if (upErr) {
         console.error('Supabase upload error', upErr)
+        // Common cause: bucket missing or permission denied. Log hint for operator.
+        if (upErr.status === 400 || upErr.status === 404) {
+          console.warn('Supabase storage bucket "service-images" may not exist or is inaccessible. Create the bucket or unset SUPABASE env vars to use local uploads.')
+        }
         // fallback to local URL if supabase upload fails
       } else {
-        // try to get public URL
+        // try to get public URL for the uploaded object
         const { data: urlData } = supabase.storage.from('service-images').getPublicUrl(filename)
+        console.log('Supabase upload success:', { key: filename, publicUrl: urlData.publicUrl })
         return res.json({ url: urlData.publicUrl })
       }
     } catch (err) {
