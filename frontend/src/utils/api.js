@@ -46,11 +46,13 @@ export async function getServicesByVendor(vendorId) {
   return await fetchJson(`${API}/api/vendors/${vendorId}/services`)
 }
 
-export async function createService({ vendor_id, title, price, duration, category }) {
+export async function createService({ vendor_id, title, price, duration, category, image_url }) {
+  const payload = { vendor_id, title, price, duration, category }
+  if (typeof image_url !== 'undefined') payload.image_url = image_url
   return await fetchJson(`${API}/api/services`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ vendor_id, title, price, duration, category }),
+    body: JSON.stringify(payload),
   })
 }
 

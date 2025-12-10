@@ -66,6 +66,20 @@ export default function VendorServices() {
     } catch (err) { alert(err?.message || 'Gagal menghapus') }
   }
 
+  async function handleUpdateImage(serviceId, file) {
+    if (!file) return alert('Pilih file gambar terlebih dahulu')
+    try {
+      const r = await uploadImage(file)
+      const image_url = r?.url
+      if (!image_url) throw new Error('Tidak ada URL gambar dari server')
+      const updated = await updateService(serviceId, { image_url })
+      // Optimistic UI: replace service in state
+      setServices((prev) => prev.map((s) => (s.id === serviceId ? { ...s, image_url: updated?.image_url || image_url } : s)))
+    } catch (err) {
+      alert(err?.message || 'Gagal memperbarui gambar')
+    }
+  }
+
   return (
     <div className="max-w-4xl mx-auto bg-white rounded-xl shadow p-6 space-y-4">
       <h2 className="text-lg font-semibold">Kelola Layanan</h2>
@@ -92,6 +106,13 @@ export default function VendorServices() {
                   <div>
                     <div className="font-medium">{s.title} — Rp{s.price?.toLocaleString()}</div>
                     <div className="text-xs text-slate-500">{s.duration} • {s.category}</div>
+                    <div className="mt-2 flex items-center gap-2">
+                      <input type="file" accept="image/*" onChange={(e) => {
+                        const f = e.target.files?.[0] || null
+                        if (f) handleUpdateImage(s.id, f)
+                      }} />
+                      <span className="text-xs text-slate-500">Ganti gambar</span>
+                    </div>
                   </div>
                 </div>
                 <div className="flex gap-2">
