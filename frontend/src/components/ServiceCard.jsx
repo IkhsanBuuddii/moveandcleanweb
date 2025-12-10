@@ -3,11 +3,18 @@ import BookingModal from './BookingModal'
 
 export default function ServiceCard({ s }) {
   const [open, setOpen] = useState(false)
+  const imgSrc = s.image_url || '/images/placeholders/service.svg'
 
   return (
     <div className="bg-white rounded-2xl shadow-sm overflow-hidden border hover:shadow-md transition">
-      <div className="h-36 bg-slate-100 flex items-center justify-center text-slate-400">
-        <div className="text-sm">Gambar Layanan</div>
+      <div className="h-36 bg-slate-100">
+        <img
+          src={imgSrc}
+          alt={s.title}
+          className="w-full h-36 object-cover"
+          loading="lazy"
+          onError={(e) => { e.currentTarget.src = '/images/placeholders/service.svg' }}
+        />
       </div>
 
       <div className="p-4">
