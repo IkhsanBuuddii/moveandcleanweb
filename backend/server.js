@@ -53,7 +53,18 @@ const upload = multer({ storage })
 
 // Create HTTP + Socket.IO server
 const httpServer = http.createServer(app);
-const io = new IOServer(httpServer, { cors: { origin: '*' } });
+const io = new IOServer(httpServer, {
+  path: '/socket.io',
+  cors: {
+    origin: [
+      'https://moveandcleanweb.vercel.app',
+      'http://localhost:5173',
+      '*'
+    ],
+    methods: ['GET', 'POST'],
+    credentials: true,
+  }
+});
 
 io.on('connection', (socket) => {
   console.log('Socket connected', socket.id);

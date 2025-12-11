@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { createOrder } from '../utils/api'
 import { useNavigate } from 'react-router-dom'
+import Modal from './ui/Modal'
 
 export default function BookingModal({ service, onClose, onSuccess }) {
   const [loading, setLoading] = useState(false)
@@ -44,11 +45,16 @@ export default function BookingModal({ service, onClose, onSuccess }) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="relative bg-white w-full max-w-md rounded-xl shadow-lg p-6 z-10">
-        <h3 className="text-lg font-semibold">Pesan: {service.title}</h3>
-        <form onSubmit={handleSubmit} className="mt-4 space-y-3">
+    <Modal open={true} onClose={onClose} title={`Pesan: ${service.title}`}
+      actions={(
+        <>
+          <button type="button" onClick={onClose} className="px-4 py-2 rounded-md border">Batal</button>
+          <button type="submit" disabled={loading} className="px-4 py-2 rounded-md bg-sky-600 text-white" onClick={handleSubmit}>
+            {loading ? 'Memproses...' : `Konfirmasi — Rp${(service.price || 0).toLocaleString()}`}
+          </button>
+        </>
+      )}>
+        <form onSubmit={handleSubmit} className="space-y-3">
           <div>
             <label className="block text-sm text-slate-600">Tanggal</label>
             <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="w-full border rounded-md px-3 py-2" required />
@@ -60,15 +66,7 @@ export default function BookingModal({ service, onClose, onSuccess }) {
           </div>
 
           {error && <div className="text-sm text-red-600">{error}</div>}
-
-          <div className="flex items-center justify-end gap-3">
-            <button type="button" onClick={onClose} className="px-4 py-2 rounded-md border">Batal</button>
-            <button type="submit" disabled={loading} className="px-4 py-2 rounded-md bg-sky-600 text-white">
-              {loading ? 'Memproses...' : `Konfirmasi — Rp${(service.price || 0).toLocaleString()}`}
-            </button>
-          </div>
         </form>
-      </div>
-    </div>
+    </Modal>
   )
 }

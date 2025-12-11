@@ -93,6 +93,24 @@ export default function App() {
             }
           />
 
+          {/* Route aliases for bookings */}
+          <Route
+            path="/dashboard/bookings"
+            element={
+              <ProtectedRoute>
+                <History />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dashboard/orders"
+            element={
+              <ProtectedRoute>
+                <History />
+              </ProtectedRoute>
+            }
+          />
+
           {/* Vendor pages (placeholders until real pages exist) */}
           <Route
             path="/dashboard/vendor/orders"
