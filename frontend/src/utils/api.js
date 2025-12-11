@@ -64,7 +64,9 @@ export async function uploadImage(file) {
     const err = await res.json().catch(() => ({ message: res.statusText }))
     throw new Error(err.message || 'Upload failed')
   }
-  return await res.json()
+  const r = await res.json()
+  // prefer signedUrl if available (for private buckets), else public url
+  return { url: r.signedUrl || r.url }
 }
 
 export async function updateService(id, payload) {

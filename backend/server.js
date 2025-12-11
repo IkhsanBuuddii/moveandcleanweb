@@ -164,8 +164,17 @@ app.post('/api/upload', upload.single('image'), async (req, res) => {
       } else {
         // try to get public URL for the uploaded object
         const { data: urlData } = supabase.storage.from('service-images').getPublicUrl(filename)
-        console.log('Supabase upload success:', { key: filename, publicUrl: urlData.publicUrl })
-        return res.json({ url: urlData.publicUrl })
+        let publicUrl = urlData?.publicUrl
+        let signedUrl = null
+        try {
+          // also create a signed URL (7 days) for private buckets
+          const { data: signedData, error: signedErr } = await supabase.storage.from('service-images').createSignedUrl(filename, 60 * 60 * 24 * 7)
+          if (!signedErr) signedUrl = signedData?.signedUrl
+        } catch (e) {
+          // ignore signed URL failures
+        }
+        console.log('Supabase upload success:', { key: filename, publicUrl, signedUrl: signedUrl ? '[signed generated]' : null })
+        return res.json({ url: publicUrl, signedUrl })
       }
     } catch (err) {
       console.error('Error uploading to supabase', err)

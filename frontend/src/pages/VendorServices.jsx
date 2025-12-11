@@ -1,5 +1,8 @@
 import React, { useEffect, useState } from 'react'
 import { getVendors, getServicesByVendor, createService, updateService, deleteService, uploadImage } from '../utils/api'
+import Modal from '../components/ui/Modal'
+import ConfirmDialog from '../components/ui/ConfirmDialog'
+import Toast, { useToast } from '../components/ui/Toast'
 
 export default function VendorServices() {
   const user = JSON.parse(sessionStorage.getItem('mc_user') || 'null')
@@ -11,6 +14,9 @@ export default function VendorServices() {
   const [category, setCategory] = useState('')
   const [imageFile, setImageFile] = useState(null)
   const [loading, setLoading] = useState(false)
+  const [showAdd, setShowAdd] = useState(false)
+  const [confirmId, setConfirmId] = useState(null)
+  const { toasts, push, remove } = useToast()
 
   useEffect(() => {
     async function load() {
@@ -53,17 +59,19 @@ export default function VendorServices() {
       console.log('createService response:', s)
       setServices((p) => [s, ...p])
       setTitle(''); setPrice(''); setDuration(''); setCategory(''); setImageFile(null)
+      setShowAdd(false)
+      push('Layanan ditambahkan', 'success')
     } catch (err) {
-      alert(err?.message || 'Gagal menambah layanan')
+      push(err?.message || 'Gagal menambah layanan', 'error')
     } finally { setLoading(false) }
   }
 
   async function handleDelete(id) {
-    if (!confirm('Hapus layanan ini?')) return
     try {
       await deleteService(id)
       setServices((p) => p.filter((x) => x.id !== id))
-    } catch (err) { alert(err?.message || 'Gagal menghapus') }
+      push('Layanan dihapus', 'success')
+    } catch (err) { push(err?.message || 'Gagal menghapus', 'error') }
   }
 
   async function handleUpdateImage(serviceId, file) {
@@ -75,8 +83,9 @@ export default function VendorServices() {
       const updated = await updateService(serviceId, { image_url })
       // Optimistic UI: replace service in state
       setServices((prev) => prev.map((s) => (s.id === serviceId ? { ...s, image_url: updated?.image_url || image_url } : s)))
+      push('Gambar diperbarui', 'success')
     } catch (err) {
-      alert(err?.message || 'Gagal memperbarui gambar')
+      push(err?.message || 'Gagal memperbarui gambar', 'error')
     }
   }
 
@@ -87,16 +96,9 @@ export default function VendorServices() {
         <div className="text-sm text-slate-500">Anda belum terdaftar sebagai vendor. Silakan daftar terlebih dahulu.</div>
       ) : (
         <>
-          <form onSubmit={handleAdd} className="grid grid-cols-1 md:grid-cols-4 gap-2">
-            <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Judul layanan" className="border px-3 py-2 rounded col-span-2" required />
-            <input value={price} onChange={(e) => setPrice(e.target.value)} placeholder="Harga" className="border px-3 py-2 rounded" />
-            <input value={duration} onChange={(e) => setDuration(e.target.value)} placeholder="Durasi" className="border px-3 py-2 rounded" />
-            <input value={category} onChange={(e) => setCategory(e.target.value)} placeholder="Kategori" className="border px-3 py-2 rounded md:col-span-4" />
-            <input type="file" accept="image/*" onChange={(e) => setImageFile(e.target.files?.[0] || null)} className="md:col-span-4" />
-            <div className="md:col-span-4 flex justify-end">
-              <button disabled={loading} className="px-4 py-2 bg-sky-600 text-white rounded">{loading ? 'Memproses...' : 'Tambah Layanan'}</button>
-            </div>
-          </form>
+          <div className="flex justify-end">
+            <button className="px-4 py-2 bg-sky-600 text-white rounded" onClick={() => setShowAdd(true)}>Tambah Layanan</button>
+          </div>
 
           <div className="mt-4 space-y-3">
             {services.map((s) => (
@@ -116,13 +118,40 @@ export default function VendorServices() {
                   </div>
                 </div>
                 <div className="flex gap-2">
-                  <button onClick={() => handleDelete(s.id)} className="px-3 py-1 rounded border text-red-600">Hapus</button>
+                  <button onClick={() => setConfirmId(s.id)} className="px-3 py-1 rounded border text-red-600">Hapus</button>
                 </div>
               </div>
             ))}
           </div>
         </>
       )}
+      <Modal open={showAdd} onClose={() => setShowAdd(false)} title="Tambah Layanan"
+        actions={(
+          <>
+            <button className="px-3 py-2 rounded border" onClick={() => setShowAdd(false)}>Batal</button>
+            <button disabled={loading} className="px-3 py-2 rounded bg-sky-600 text-white" onClick={(e) => handleAdd(e)}>{loading ? 'Memproses...' : 'Simpan'}</button>
+          </>
+        )}>
+        <form onSubmit={handleAdd} className="space-y-3">
+          <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Judul layanan" className="w-full border px-3 py-2 rounded" required />
+          <div className="grid grid-cols-2 gap-2">
+            <input value={price} onChange={(e) => setPrice(e.target.value)} placeholder="Harga" className="border px-3 py-2 rounded" />
+            <input value={duration} onChange={(e) => setDuration(e.target.value)} placeholder="Durasi" className="border px-3 py-2 rounded" />
+          </div>
+          <input value={category} onChange={(e) => setCategory(e.target.value)} placeholder="Kategori" className="w-full border px-3 py-2 rounded" />
+          <input type="file" accept="image/*" onChange={(e) => setImageFile(e.target.files?.[0] || null)} />
+        </form>
+      </Modal>
+
+      <ConfirmDialog
+        open={!!confirmId}
+        title="Hapus Layanan"
+        message="Apakah Anda yakin ingin menghapus layanan ini?"
+        onCancel={() => setConfirmId(null)}
+        onConfirm={() => { const id = confirmId; setConfirmId(null); handleDelete(id) }}
+      />
+
+      <Toast toasts={toasts} remove={remove} />
     </div>
   )
 }
