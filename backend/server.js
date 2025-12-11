@@ -249,18 +249,44 @@ app.post('/api/vendors', async (req, res) => {
       if (existErr) return res.status(500).json({ message: existErr.message });
       if (existing && existing.length) return res.status(400).json({ message: 'User already has vendor profile' });
 
-      const { data, error } = await supabase.from('vendors').insert([{ user_id, vendor_name, description: description || null, location: location || null }]).select().single();
+      // Insert vendor; with RLS or certain PostgREST settings, .single() may not return row
+      const { data: inserted, error } = await supabase
+        .from('vendors')
+        .insert([{ user_id, vendor_name, description: description || null, location: location || null }])
+        .select()
+        .single();
       if (error) return res.status(500).json({ message: error.message });
 
-      // upgrade user role to vendor
+      // Ensure we have the inserted vendor row
+      let vendorRow = inserted;
+      if (!vendorRow) {
+        const { data: fetchInserted, error: fetchErr } = await supabase
+          .from('vendors')
+          .select('*')
+          .eq('user_id', user_id)
+          .eq('vendor_name', vendor_name)
+          .order('id', { ascending: false })
+          .limit(1)
+          .single();
+        if (fetchErr) return res.status(500).json({ message: fetchErr.message });
+        vendorRow = fetchInserted;
+      }
+
+      // Try to upgrade user role to vendor, but don't fail vendor creation if user missing
       const { error: updErr } = await supabase.from('users').update({ role: 'vendor' }).eq('id', user_id);
-      if (updErr) return res.status(500).json({ message: updErr.message });
+      if (updErr) console.warn('User role update failed (non-fatal):', updErr.message);
 
-      // fetch updated user and return both vendor + user so client can update session
-      const { data: updatedUser, error: userErr } = await supabase.from('users').select('id, name, email, role').eq('id', user_id).limit(1).single();
-      if (userErr) return res.status(500).json({ message: userErr.message });
+      // Fetch updated user if exists
+      let updatedUser = null;
+      const { data: userData, error: userErr } = await supabase
+        .from('users')
+        .select('id, name, email, role')
+        .eq('id', user_id)
+        .limit(1)
+        .single();
+      if (!userErr) updatedUser = userData;
 
-      return res.json({ vendor: data, user: updatedUser });
+      return res.json({ vendor: vendorRow, user: updatedUser });
     } catch (err) {
       return res.status(500).json({ message: err.message || err });
     }
