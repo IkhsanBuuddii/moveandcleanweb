@@ -1,6 +1,9 @@
 import React, { useEffect, useState, useRef } from 'react'
 import { io } from 'socket.io-client'
 import { API, getVendors, getOrdersByVendor, updateOrderStatus } from '../utils/api'
+import Modal from '../components/ui/Modal'
+import ConfirmDialog from '../components/ui/ConfirmDialog'
+import Toast, { useToast } from '../components/ui/Toast'
 
 function normalizeOrder(o) {
   return {
@@ -16,6 +19,9 @@ export default function VendorOrders() {
   const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(false)
   const socketRef = useRef(null)
+  const [openOrder, setOpenOrder] = useState(null)
+  const [statusToSet, setStatusToSet] = useState(null)
+  const { toasts, push, remove } = useToast()
 
   useEffect(() => {
     async function load() {
@@ -76,14 +82,15 @@ export default function VendorOrders() {
   }, [user])
 
   async function changeStatus(orderId, status) {
-    if (!confirm(`Ubah status pesanan menjadi '${status}'?`)) return
     try {
       setLoading(true)
       const updated = await updateOrderStatus(orderId, status)
       const u = normalizeOrder(updated)
       setOrders((prev) => prev.map((o) => (o.id === u.id ? u : o)))
+      push(`Status diubah ke '${status}'`, 'success')
+      setStatusToSet(null)
     } catch (err) {
-      alert(err?.message || 'Gagal mengubah status')
+      push(err?.message || 'Gagal mengubah status', 'error')
     } finally { setLoading(false) }
   }
 
@@ -105,15 +112,18 @@ export default function VendorOrders() {
                   <div className="text-xs text-slate-500">Pelanggan: {o.user_name || o.name || o.email} • {o.date}</div>
                   <div className="mt-2 text-sm">Total: Rp{o.total?.toLocaleString?.() || o.total}</div>
                   <div className="mt-2 text-sm text-slate-600">Notes: {o.notes || '-'}</div>
+                  <div className="mt-3">
+                    <button className="px-3 py-1 border rounded text-sm" onClick={() => setOpenOrder(o)}>Lihat Detail</button>
+                  </div>
                 </div>
 
                 <div className="text-right">
                   <div className="text-sm font-medium mb-2">Status: <span className="text-slate-700">{o.status}</span></div>
                   <div className="flex flex-col gap-2">
-                    <button disabled={loading} onClick={() => changeStatus(o.id, 'accepted')} className="px-3 py-1 bg-sky-600 text-white rounded text-sm">Terima</button>
-                    <button disabled={loading} onClick={() => changeStatus(o.id, 'in_progress')} className="px-3 py-1 bg-amber-500 text-white rounded text-sm">Mulai</button>
-                    <button disabled={loading} onClick={() => changeStatus(o.id, 'completed')} className="px-3 py-1 bg-green-600 text-white rounded text-sm">Selesai</button>
-                    <button disabled={loading} onClick={() => changeStatus(o.id, 'cancelled')} className="px-3 py-1 bg-red-600 text-white rounded text-sm">Batalkan</button>
+                    <button disabled={loading} onClick={() => setStatusToSet({ id: o.id, status: 'accepted' })} className="px-3 py-1 bg-sky-600 text-white rounded text-sm">Terima</button>
+                    <button disabled={loading} onClick={() => setStatusToSet({ id: o.id, status: 'in_progress' })} className="px-3 py-1 bg-amber-500 text-white rounded text-sm">Mulai</button>
+                    <button disabled={loading} onClick={() => setStatusToSet({ id: o.id, status: 'completed' })} className="px-3 py-1 bg-green-600 text-white rounded text-sm">Selesai</button>
+                    <button disabled={loading} onClick={() => setStatusToSet({ id: o.id, status: 'cancelled' })} className="px-3 py-1 bg-red-600 text-white rounded text-sm">Batalkan</button>
                   </div>
                 </div>
               </div>
@@ -121,6 +131,34 @@ export default function VendorOrders() {
           ))}
         </div>
       )}
+
+      <Modal open={!!openOrder} onClose={() => setOpenOrder(null)} title={openOrder ? `Order #${openOrder.id}` : ''}
+        actions={openOrder && (
+          <>
+            <button className="px-3 py-2 rounded border" onClick={() => setOpenOrder(null)}>Tutup</button>
+          </>
+        )}>
+        {openOrder && (
+          <div className="space-y-2 text-sm">
+            <div><span className="font-medium">Layanan:</span> {openOrder.title || openOrder.service_title}</div>
+            <div><span className="font-medium">Pelanggan:</span> {openOrder.user_name || openOrder.name || openOrder.email}</div>
+            <div><span className="font-medium">Tanggal:</span> {openOrder.date}</div>
+            <div><span className="font-medium">Total:</span> Rp{openOrder.total?.toLocaleString?.() || openOrder.total}</div>
+            <div><span className="font-medium">Catatan:</span> {openOrder.notes || '-'}</div>
+            <div><span className="font-medium">Status:</span> {openOrder.status}</div>
+          </div>
+        )}
+      </Modal>
+
+      <ConfirmDialog
+        open={!!statusToSet}
+        title="Ubah Status Pesanan"
+        message={statusToSet ? `Apakah Anda yakin ingin mengubah status menjadi '${statusToSet.status}'?` : ''}
+        onCancel={() => setStatusToSet(null)}
+        onConfirm={() => { const s = statusToSet; setStatusToSet(null); changeStatus(s.id, s.status) }}
+      />
+
+      <Toast toasts={toasts} remove={remove} />
     </div>
   )
 }
