@@ -1,5 +1,12 @@
 export const API = import.meta.env.VITE_API_BASE || ''
 
+function authHeaders(extra = {}) {
+  const token = JSON.parse(sessionStorage.getItem('mc_token') || 'null') || sessionStorage.getItem('mc_token') || null
+  const headers = { ...(extra || {}) }
+  if (token) headers['Authorization'] = `Bearer ${token}`
+  return headers
+}
+
 export async function fetchJson(url, opts) {
   const res = await fetch(url, opts)
   if (res.ok) {
@@ -37,7 +44,7 @@ export async function getVendorById(id) {
 export async function createVendor({ user_id, vendor_name, description, location }) {
   return await fetchJson(`${API}/api/vendors`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: authHeaders({ 'Content-Type': 'application/json' }),
     body: JSON.stringify({ user_id, vendor_name, description, location }),
   })
 }
@@ -51,7 +58,7 @@ export async function createService({ vendor_id, title, price, duration, categor
   if (typeof image_url !== 'undefined') payload.image_url = image_url
   return await fetchJson(`${API}/api/services`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: authHeaders({ 'Content-Type': 'application/json' }),
     body: JSON.stringify(payload),
   })
 }
@@ -72,13 +79,13 @@ export async function uploadImage(file) {
 export async function updateService(id, payload) {
   return await fetchJson(`${API}/api/services/${id}`, {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
+    headers: authHeaders({ 'Content-Type': 'application/json' }),
     body: JSON.stringify(payload),
   })
 }
 
 export async function deleteService(id) {
-  return await fetchJson(`${API}/api/services/${id}`, { method: 'DELETE' })
+  return await fetchJson(`${API}/api/services/${id}`, { method: 'DELETE', headers: authHeaders() })
 }
 
 export async function getOrdersByUser(userId) {
@@ -100,7 +107,7 @@ export async function getOrdersByVendor(vendorId) {
 export async function updateOrderStatus(orderId, status) {
   return await fetchJson(`${API}/api/orders/${orderId}`, {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
+    headers: authHeaders({ 'Content-Type': 'application/json' }),
     body: JSON.stringify({ status }),
   })
 }
@@ -108,7 +115,7 @@ export async function updateOrderStatus(orderId, status) {
 export async function createOrder({ user_id, vendor_id, service_id, total, scheduled_at, notes }) {
   return await fetchJson(`${API}/api/orders`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: authHeaders({ 'Content-Type': 'application/json' }),
     body: JSON.stringify({ user_id, vendor_id, service_id, total, scheduled_at, notes }),
   })
 }

@@ -9,6 +9,7 @@ import fs from 'fs'
 import db from "./db.js";
 import dotenv from 'dotenv';
 import { createClient } from '@supabase/supabase-js';
+import jwt from 'jsonwebtoken'
 
 dotenv.config();
 
@@ -26,6 +27,22 @@ if (SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY) {
 const app = express();
 app.use(cors());
 app.use(express.json());
+// JWT
+const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-me'
+function authMiddleware(req, res, next) {
+  const auth = req.headers.authorization || ''
+  const parts = auth.split(' ')
+  if (parts.length === 2 && parts[0] === 'Bearer') {
+    try {
+      const payload = jwt.verify(parts[1], JWT_SECRET)
+      req.user = payload
+      return next()
+    } catch (e) {
+      return res.status(401).json({ message: 'Invalid or expired token' })
+    }
+  }
+  return res.status(401).json({ message: 'Authorization header missing' })
+}
 
 // serve uploaded files
 const uploadsDir = path.join(process.cwd(), 'uploads')
@@ -140,7 +157,8 @@ app.post("/api/login", async (req, res) => {
         .limit(1)
         .single();
       if (error) return res.status(401).json({ message: 'Email atau password salah' });
-      return res.json({ user: data });
+      const token = jwt.sign({ id: data.id, email: data.email, role: data.role }, JWT_SECRET, { expiresIn: '7d' })
+      return res.json({ user: data, token });
     } catch (err) {
       return res.status(500).json({ message: err.message || err });
     }
@@ -151,8 +169,8 @@ app.post("/api/login", async (req, res) => {
     .get(email, password);
 
   if (!user) return res.status(401).json({ message: "Email atau password salah" });
-
-  res.json({ user });
+  const token = jwt.sign({ id: user.id, email: user.email, role: user.role }, JWT_SECRET, { expiresIn: '7d' })
+  res.json({ user, token });
 });
 
 // Image upload endpoint — supports Supabase storage when configured, otherwise stores locally under /uploads
@@ -204,7 +222,7 @@ app.post('/api/upload', upload.single('image'), async (req, res) => {
 })
 
 // ✅ TAMBAH SERVICE (vendor menambahkan layanan)
-app.post("/api/services", async (req, res) => {
+app.post("/api/services", authMiddleware, async (req, res) => {
   const { vendor_id, title, price, duration, category, image_url } = req.body;
   if (!vendor_id || !title) return res.status(400).json({ message: 'vendor_id and title required' });
 
@@ -259,7 +277,7 @@ app.get("/api/services", async (req, res) => {
 });
 
 // ✅ VENDOR CRUD
-app.post('/api/vendors', async (req, res) => {
+app.post('/api/vendors', authMiddleware, async (req, res) => {
   const { user_id, vendor_name, description, location } = req.body;
   if (!user_id || !vendor_name) return res.status(400).json({ message: 'user_id and vendor_name required' });
 
@@ -381,7 +399,7 @@ app.get('/api/vendors/:vendorId/services', async (req, res) => {
 });
 
 // Update service
-app.put('/api/services/:id', async (req, res) => {
+app.put('/api/services/:id', authMiddleware, async (req, res) => {
   const { title, price, duration, category, image_url } = req.body;
   const id = req.params.id;
   if (supabase) {
@@ -404,7 +422,7 @@ app.put('/api/services/:id', async (req, res) => {
 });
 
 // Delete service
-app.delete('/api/services/:id', async (req, res) => {
+app.delete('/api/services/:id', authMiddleware, async (req, res) => {
   const id = req.params.id;
   if (supabase) {
     try {
@@ -422,7 +440,7 @@ app.delete('/api/services/:id', async (req, res) => {
 });
 
 // ✅ BUAT ORDER
-app.post("/api/orders", async (req, res) => {
+app.post("/api/orders", authMiddleware, async (req, res) => {
   const { user_id, vendor_id, service_id, total, scheduled_at, notes } = req.body;
 
   if (!user_id || !vendor_id || !service_id) {
